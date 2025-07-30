@@ -1,0 +1,231 @@
+# Mount Amazon S3 Bucket on Windows - Simplified Guide
+
+## Overview
+
+This guide demonstrates how to mount an Amazon S3 bucket as a Windows drive using only Rclone and WinFSP, with automatic hidden mounting on user login through Windows Task Scheduler.
+
+## Prerequisites
+
+### AWS Requirements
+- An S3 bucket (e.g., `mt-s3-demo-mount-bucket`)
+- An IAM user with programmatic access (Access Key & Secret Key)
+- Proper IAM policy attached to the user allowing:
+  - `s3:ListBucket`
+  - `s3:GetObject`
+  - `s3:PutObject`
+  - `s3:DeleteObject`
+  - `s3:ListAllMyBuckets` (if needed)
+- Bucket must not have explicit deny in its policy
+
+### Required Tools
+
+1. **Rclone**: Connects your Windows system to your Amazon S3 bucket
+2. **WinFSP**: System driver that allows Windows to mount cloud storage as a drive
+3. **Windows Task Scheduler**: Built-in Windows service for automated task execution
+
+## Initial Setup
+
+### Step 1: Install WinFSP
+Download and install WinFSP from the official website: https://winfsp.dev/rel/
+
+### Step 2: Download and Configure Rclone
+1. Download Rclone from: https://rclone.org/downloads/
+2. Configure Rclone with your S3 credentials using `rclone config`
+
+## Implementation Steps
+
+### Step 1: Create a Dedicated Rclone Folder
+
+1. Open File Explorer
+2. Navigate to C: drive
+3. Create a new folder named `rclone`
+
+You now have:
+```
+C:\
+└─ rclone\
+```
+
+### Step 2: Setup Rclone Files
+
+Copy both these files into `C:\rclone`:
+- `rclone.exe` (from your Rclone download)
+- Your working `rclone.conf` (from `%USERPROFILE%\.config\rclone\rclone.conf`)
+
+Final structure:
+```
+C:\rclone\
+├── rclone.exe
+└── rclone.conf
+```
+
+### Step 3: Create the Mount Batch Script
+
+1. In `C:\rclone`, right-click → New → Text Document
+2. Rename it (including extension) to: `mount-s3.bat`
+3. Right-click `mount-s3.bat` → Edit → paste exactly:
+
+```batch
+@echo off
+REM -- Change these values if your remote or bucket differs
+set REMOTE=my-s3
+set BUCKET=mt-s3-demo-mount-bucket
+set DRIVE=S:
+
+REM -- Mount command; do NOT close this window if run manually
+"C:\rclone\rclone.exe" mount %REMOTE%:%BUCKET% %DRIVE% --vfs-cache-mode full --network-mode
+```
+
+4. Save and close Notepad
+
+Your folder now looks like:
+```
+C:\rclone\
+├── mount-s3.bat
+├── rclone.conf
+└── rclone.exe
+```
+
+### Step 4: Test Your Batch Script Manually
+
+1. Double-click `mount-s3.bat` in Explorer
+2. A console opens; after a moment, you should see a new S: drive in "This PC"
+3. Open a text file on S:, edit, save in place—confirm it works
+4. Close the console window to unmount
+
+**Important**: Once this manual test passes, you know the script is correct.
+
+### Step 5: Create the Hidden Run VBScript
+
+1. In `C:\rclone`, right-click → New → Text Document
+2. Rename it to: `mount-s3-hidden.vbs`
+3. Right-click `mount-s3-hidden.vbs` → Edit → paste exactly:
+
+```vbscript
+' ===== mount-s3-hidden.vbs =====
+Set WshShell = CreateObject("WScript.Shell")
+' Arguments: 0 = run hidden, False = do not wait for completion
+WshShell.Run """C:\rclone\mount-s3.bat""", 0, False
+```
+
+4. Save and close
+
+Now your `C:\rclone\` folder contains:
+```
+C:\rclone\
+├── mount-s3.bat
+├── mount-s3-hidden.vbs
+├── rclone.conf
+└── rclone.exe
+```
+
+### Step 6: Set Up the Task Scheduler Job
+
+1. Press `Win+R`, type `taskschd.msc`, press Enter
+2. In the Actions pane, click **Create Task...** (not "Basic Task")
+
+#### General Tab
+- **Name**: `Mount S3 Drive`
+- **Description**: `Automatically mount S3 bucket on login, hidden.`
+- **Security options**:
+  - Select "Run only when user is logged on"
+  - Check "Run with highest privileges"
+
+#### Triggers Tab
+- Click **New...**
+  - **Begin the task**: At log on
+  - **Settings**: Any user (or pick your username)
+  - **Delay task for**: 30 seconds
+  - Click **OK**
+
+#### Actions Tab
+- Click **New...**
+  - **Action**: Start a program
+  - **Program/script**: `wscript.exe`
+  - **Add arguments (optional)**: `"C:\rclone\mount-s3-hidden.vbs"`
+  - **Start in (optional)**: `C:\rclone`
+  - Click **OK**
+
+#### Conditions Tab
+- Uncheck anything you don't want (e.g., "Start only if on AC power")
+
+#### Settings Tab
+- Check "Run task as soon as possible after a scheduled start is missed"
+- Check "If the task fails, restart every 1 minute, up to 3 times"
+- Ensure "Allow task to be run on demand" is checked
+
+3. Click **OK** to save the task
+
+### Step 7: Final Verification
+
+1. Log off your Windows session or reboot the PC
+2. Log back in
+3. Wait ~30 seconds
+4. Open File Explorer → This PC → you should see S: mounted
+5. Double-click a text file on S: → edit → Save. It should overwrite in place with no prompts
+
+**Congratulations!** Your S3 bucket now behaves as a fully editable, hidden, auto-mounting drive every time you log in, with zero console windows and no service account headaches.
+
+## Configuration Customization
+
+### Changing Remote/Bucket Names
+Edit the variables in `mount-s3.bat`:
+```batch
+set REMOTE=your-remote-name
+set BUCKET=your-bucket-name
+set DRIVE=S:
+```
+
+### Changing Mount Drive Letter
+Simply change the `DRIVE` variable to any available drive letter (e.g., `Z:`).
+
+## Troubleshooting
+
+### Common Issues
+
+**Drive not appearing after login:**
+- Check Task Scheduler → Task Scheduler Library → find "Mount S3 Drive"
+- Right-click → Run to test manually
+- Check the "Last Run Result" column for error codes
+
+**Permission denied errors:**
+- Verify your AWS IAM policies are correctly configured
+- Ensure your `rclone.conf` contains valid credentials
+
+**Files not syncing properly:**
+- Check your internet connection
+- Verify S3 bucket permissions
+- Try remounting by running the VBScript manually
+
+**Task Scheduler not running:**
+- Ensure "Run with highest privileges" is checked
+- Verify the file paths in the Actions tab are correct
+- Check Windows Event Viewer for detailed error messages
+
+### Log Files and Debugging
+
+To enable logging, modify your `mount-s3.bat` file:
+```batch
+"C:\rclone\rclone.exe" mount %REMOTE%:%BUCKET% %DRIVE% --vfs-cache-mode full --network-mode --log-file "C:\rclone\mount.log" --log-level INFO
+```
+
+## Benefits of This Solution
+
+- **Minimal Dependencies**: Only requires Rclone and WinFSP
+- **Hidden Operation**: No visible console windows during operation
+- **Automatic Mounting**: S3 bucket mounts automatically on user login
+- **User-Level Operation**: Runs under user context, avoiding service complications
+- **Reliable**: Task Scheduler handles failures and retries automatically
+- **Full File Access**: Complete read/write access to S3 files as local files
+
+## Security Best Practices
+
+- Store AWS credentials securely in the rclone configuration
+- Regularly rotate your AWS access keys
+- Use least-privilege IAM policies for your S3 access
+- Monitor S3 access logs for unusual activity
+- Consider encrypting sensitive files before uploading to S3
+
+---
+
+**Note**: This streamlined approach provides seamless S3 integration with Windows Explorer using only essential tools, allowing you to work with cloud files as if they were stored locally.
