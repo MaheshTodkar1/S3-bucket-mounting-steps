@@ -1,0 +1,202 @@
+wesite hosting page 
+
+Exact Steps - What to Click
+Step 2: Create Domain (Detailed Clicks)
+
+Click "Websites & Domains" (left sidebar)
+Click "Add Domain" (blue button)
+SELECT "Blank Website" (first option - just click on it)
+Domain name field: Type test.local
+Leave everything else as default
+Click "OK" button at bottom
+
+Step 3: Upload Files (Detailed Clicks)
+
+Click on "test.local" (your domain name in the list)
+Click "File Manager" button
+Double-click "httpdocs" folder to open it
+Click the "+" button (top toolbar)
+Click "Create File" from dropdown
+Type filename: index.html
+Click "OK"
+
+Step 4: Edit File (Detailed Clicks)
+
+Click on "index.html" file name
+Click "Edit in Code Editor" button
+Copy-paste this code:
+
+html<html>
+<body>
+<h1>My Test Website Works!</h1>
+<p>This is running on Plesk</p>
+</body>
+</html>
+
+Click "Save and Close" button
+
+Step 5: View Website
+
+Open new browser tab
+Type: http://YOUR-EC2-IP-ADDRESS
+Press Enter
+
+That's it! Your website should show "My Test Website Works!"
+Which step are you currently on? I can guide you through the exact clicks for that specific step.
+
+
+
+
+
+
+
+
+
+
+
+
+##### Monitoring setup
+
+
+
+
+
+
+
+
+Part 1: Setting Up Website Monitoring in Plesk
+Step 1: Install Monitoring Extension
+
+Go to Plesk Dashboard
+Click "Extensions" (left sidebar)
+Search for "360 Monitoring" or "UptimeRobot"
+Click "Install" on one of them (360 Monitoring is recommended)
+Wait for installation to complete
+
+Step 2: Configure 360 Monitoring
+
+Go to "Extensions" → "My Extensions"
+Click "360 Monitoring"
+Click "Get Started" or "Configure"
+Add your website:
+
+URL: http://YOUR-EC2-IP
+Check interval: 1 minute (for testing)
+Enable Email Alerts
+
+
+Add your email for notifications
+Click "Save"
+
+Part 2: Create Test Scenarios (Simulate Website Issues)
+Step 1: Create Different Test Pages
+Go to File Manager → httpdocs and create these files:
+File 1: index.html (Normal working page)
+html<html><body><h1>Website is Working!</h1></body></html>
+File 2: down.html (Simulate downtime page)
+html<html><body><h1>Site Under Maintenance</h1></body></html>
+File 3: redirect.php (Simulate redirect issue)
+php<?php
+header("Location: /login.php", true, 302);
+exit();
+?>
+File 4: login.php (Simulate login redirect)
+php<?php
+header("Location: /outdated.html", true, 302);
+exit();
+?>
+File 5: outdated.html (Final redirect - returns 200 but wrong content)
+html<html><body><h1>This page is outdated</h1></body></html>
+Step 2: Test Different Scenarios
+Scenario 1: Normal Website (Should NOT alert)
+
+Keep index.html as main page
+Monitor should show "UP"
+
+Scenario 2: Simulate Server Down (Should alert)
+
+Go to File Manager
+Rename index.html to index_backup.html
+Wait 2-3 minutes
+Check if you get alert email
+
+Scenario 3: Simulate Your Redirect Issue (Tricky one)
+
+Rename index.html to index_backup.html
+Rename redirect.php to index.php
+Set this as default page in Plesk
+Monitor will get 200 status but wrong content
+
+Part 3: Advanced Monitoring Setup (For Your Redirect Issue)
+Step 1: Configure Content-Based Monitoring
+
+Go to 360 Monitoring settings
+Click "Advanced Settings"
+Enable "Content Checking"
+Add keyword that MUST be present: "Website is Working!"
+Add keyword that should NOT be present: "outdated" or "maintenance"
+Save settings
+
+Step 2: Set Up Multiple Check Types
+Configure these monitoring types:
+
+HTTP Status Check (basic)
+Content Keyword Check (advanced)
+Response Time Check
+SSL Certificate Check (if using HTTPS)
+
+Part 4: Testing the Alert System
+Test 1: Simple Downtime
+
+Stop Apache/Nginx service in Plesk:
+
+Go to "Tools & Settings" → "Services Management"
+Stop "Apache" service
+Wait 2 minutes
+Check your email for alerts
+Restart Apache service
+
+
+
+Test 2: Content-Based Alert (Your Specific Issue)
+
+Replace index.html with:
+
+html<html><body><h1>This page is outdated</h1></body></html>
+
+Wait 2-3 minutes
+Should trigger alert because content changed
+Restore original content
+
+Test 3: Redirect Chain Test
+
+Create the redirect chain I mentioned above
+Monitor should detect wrong final content
+Even though it gets 200 status, content check will fail
+
+Part 5: Configure Alert Channels
+Email Alerts
+
+SMTP Settings in 360 Monitoring
+Add multiple email addresses
+Set alert frequency (immediate, every 5 min, etc.)
+
+SMS Alerts (if supported)
+
+Add phone number
+Configure SMS gateway
+
+Webhook Alerts (Advanced)
+
+Set webhook URL for integration with other systems
+Configure JSON payload format
+
+Expected Results:
+
+Normal monitoring: No alerts when site works
+Server down: Immediate alert when Apache stops
+Content issue: Alert when page content changes (solves your redirect problem)
+Performance: Alert when site is slow
+
+This setup will help you understand how to catch issues like your winfinity.com redirect problem, where the site returns 200 but shows wrong content.
+Which part do you want to start with first? Installing the monitoring extension?
