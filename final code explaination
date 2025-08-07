@@ -96,3 +96,42 @@ app.Run("http://0.0.0.0:80");
 // 0.0.0.0 means it accepts connections from any network address
 // Port 80 is the standard port for websites (so users don't need to type a port number)
 // Without this line, your website wouldn't actually start running
+
+
+
+
+
+
+
+
+
+
+
+
+{
+  // appsettings.json stores app configuration like environment variables
+  // Your app reads these settings at startup instead of hardcoding them in source code
+  
+  "ApplicationInsights": {
+    // Contains connection details for Azure Application Insights monitoring service
+    // This section tells your app where and how to send performance/error data
+    
+    "ConnectionString": "InstrumentationKey=YOUR_KEY;IngestionEndpoint=https://YOUR_REGION.api.applicationinsights.azure.com/"
+    // Unique connection string that identifies your app and where to send monitoring data
+    // Like a phone number and address for the monitoring service
+  },
+  
+  "Logging": {
+    // Controls how much detail your app writes to log files in Azure Application Insights
+    // Sets the verbosity level for data sent to Azure monitoring service
+    
+    "LogLevel": {
+      // Defines minimum logging detail level for different message types
+      // Higher levels = more messages, lower levels = only important messages
+      
+      "Default": "Information"
+      // Records important events, warnings, and errors but skips debug details
+      // Good balance between useful information and avoiding log spam
+    }
+  }
+}
