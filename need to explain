@@ -1,0 +1,65 @@
+
+
+
+Dependency to enable Application Insights. ( This is require to enable Azure monitring- Application insights )
+dotnet add package Microsoft.ApplicationInsights.AspNetCore
+
+
+Program.cs
+
+using Microsoft.AspNetCore.Builder;
+// Provides WebApplicationBuilder and WebApplication types for configuring middleware, routing and hosting
+using Microsoft.Extensions.Configuration;     // Enables reading configuration (e.g., appsettings.json, env vars) via builder.Configuration
+using Microsoft.Extensions.DependencyInjection;  // Provides extension methods to register services in the DI container via builder.Services
+using Microsoft.ApplicationInsights.AspNetCore.Extensions;  // brings in ApplicationInsightsServiceOptions
+using Microsoft.ApplicationInsights.Extensibility;           // brings in TelemetryConfiguration
+
+var builder = WebApplication.CreateBuilder(args);  // initialize the builder with default configuration and DI container
+
+// 1. Read AI settings from appsettings.json
+ var aiOptions = new ApplicationInsightsServiceOptions
+{
+    // Load the App Insights connection string defined under the "ApplicationInsights" section
+    ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]
+};
+
+// 2. Register the Application Insights SDK with those options
+builder.Services.AddApplicationInsightsTelemetry(aiOptions);
+// └─ Hooks into HTTP pipeline, exceptions, logs, dependencies, buffers telemetry, and ships it to Azure
+
+var app = builder.Build();  // build the WebApplication, freezing the service registrations
+
+// 3. Define your API routes/endpoints
+var methods = new[] { "GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" };
+app.MapMethods("/index", methods, () => "This is the Index page.");  // responds with text at /index
+app.MapMethods("/info",  methods, () => "This is the Info page.");   // responds with text at /info
+app.MapGet   ("/home",           () => "Welcome to the Home page!"); // responds with text at /home
+
+// 4. Root path that flushes any buffered telemetry immediately
+app.MapGet("/", (TelemetryConfiguration tc) =>
+{
+    tc.TelemetryChannel.Flush();   // sends any in-flight telemetry to Application Insights immediately
+    return "Hello from ASP.NET Core on EC2 + App Insights!";
+});
+
+// 5. Start listening on all network interfaces on port 80
+app.Run("http://0.0.0.0:80");
+
+
+
+
+
+appsettings.json
+
+{
+  "ApplicationInsights": {
+    "ConnectionString": "InstrumentationKey=bd08-ddb0-455e-8f17-107a22d53bc0;IngestionEndpoint=https://centralindia-0.in.applicationinsights.azure.com/;LiveEndpoint=https://centralindia.livediagnostics.monitor.azure.com/"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information"
+    }
+  }
+}
+
+
