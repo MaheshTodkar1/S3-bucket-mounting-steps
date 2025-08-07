@@ -1,0 +1,98 @@
+// Dependency Package Required:
+// dotnet add package Microsoft.ApplicationInsights.AspNetCore
+// This installs the Application Insights library that helps monitor your web application
+// It automatically tracks user visits, errors, and performance issues
+// Without this package, you can't collect monitoring data from your app
+
+using Microsoft.AspNetCore.Builder;                          
+// This import gives us the tools to create and configure a web application
+// It's like importing building blocks to construct your web server
+// Without this, you can't create the basic structure of your web app
+
+using Microsoft.Extensions.Configuration;                    
+// This import allows your app to read settings from files like appsettings.json
+// Think of it as a way to read your app's configuration file
+// You need this to access connection strings and other app settings
+
+using Microsoft.Extensions.DependencyInjection;             
+// This import helps manage services and dependencies in your application
+// It's like a container that holds all the tools your app needs
+// Without this, you can't register Application Insights or other services
+
+using Microsoft.ApplicationInsights.AspNetCore.Extensions;  
+// This import provides the specific configuration options for Application Insights
+// It gives you the ApplicationInsightsServiceOptions class to set up monitoring
+// You need this to properly configure how Application Insights works
+
+using Microsoft.ApplicationInsights.Extensibility;          
+// This import gives you control over telemetry (monitoring data) collection
+// It provides TelemetryConfiguration to manually control data sending
+// You need this if you want to force-send monitoring data immediately
+
+var builder = WebApplication.CreateBuilder(args);  
+// This creates the foundation of your web application
+// It's like laying the groundwork before building a house
+// This step prepares everything needed to configure your web server
+
+var aiOptions = new ApplicationInsightsServiceOptions  
+// This creates a configuration object to set up Application Insights monitoring
+// Think of it as filling out a form with your monitoring preferences
+// You need this to tell Application Insights where to send your data
+{
+    ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]  
+    // This reads the connection string from your appsettings.json file
+    // The connection string is like an address that tells where to send monitoring data
+    // Without this, Application Insights won't know where to send your app's data
+};
+
+builder.Services.AddApplicationInsightsTelemetry(aiOptions);  
+// This registers Application Insights with your web application
+// It automatically starts collecting data about requests, errors, and performance
+// Once added, it monitors every user visit and tracks problems without extra code
+
+var app = builder.Build();  
+// This finalizes the web application setup and creates the actual web server
+// Think of it as completing the construction of your web application
+// After this point, you can start defining what your web pages will do
+
+var methods = new[] { "GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" };  
+// This creates a list of HTTP methods (ways users can interact with your website)
+// GET is for viewing pages, POST is for sending data, etc.
+// You define this list to reuse it for multiple web pages that support all these methods
+
+app.MapMethods("/index", methods, () => "This is the Index page.");  
+// This creates a web page at the URL "/index" that accepts all HTTP methods
+// When someone visits yourwebsite.com/index, they'll see "This is the Index page."
+// You need this to define what content appears when users visit this specific URL
+
+app.MapMethods("/info",  methods, () => "This is the Info page.");   
+// This creates another web page at "/info" that also accepts all HTTP methods
+// When someone visits yourwebsite.com/info, they'll see "This is the Info page."
+// This gives users another page to visit on your website
+
+app.MapGet   ("/home",           () => "Welcome to the Home page!"); 
+// This creates a web page at "/home" that only responds to GET requests (page viewing)
+// When someone visits yourwebsite.com/home, they'll see "Welcome to the Home page!"
+// This is a simpler page setup since it only handles viewing, not form submissions
+
+app.MapGet("/", (TelemetryConfiguration tc) =>  
+// This creates the main page of your website (the homepage at yourwebsite.com/)
+// It also receives a special parameter (tc) that controls Application Insights
+// This page is what users see when they visit your website's main address
+{
+    tc.TelemetryChannel.Flush();   
+    // This forces Application Insights to immediately send all collected data to Azure
+    // Normally, data is sent in batches, but this sends it right away
+    // This ensures you can see monitoring data immediately when visiting the homepage
+    
+    return "Hello from ASP.NET Core on EC2 + App Insights!";  
+    // This is the message users will see when they visit your homepage
+    // It's a simple text response that confirms your app is working
+    // You can change this message to whatever you want users to see
+});
+
+app.Run("http://0.0.0.0:80");  
+// This starts your web server and makes it available on the internet
+// 0.0.0.0 means it accepts connections from any network address
+// Port 80 is the standard port for websites (so users don't need to type a port number)
+// Without this line, your website wouldn't actually start running
