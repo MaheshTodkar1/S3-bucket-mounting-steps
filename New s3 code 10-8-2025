@@ -1,0 +1,58 @@
+updated bash script
+
+s3mount.bat
+
+@echo off
+REM ===== s3mount.bat =====
+REM Improved version with error checking
+
+REM -- Configuration
+set REMOTE=my-s3
+set BUCKET=mt-s3-test-bucket  
+set DRIVE=K:
+set RCLONE_PATH=C:\rclone\rclone.exe
+
+REM -- Check if rclone exists
+if not exist "%RCLONE_PATH%" (
+    echo Error: rclone.exe not found at %RCLONE_PATH%
+    exit /b 1
+)
+
+REM -- Check if drive is already mounted (optional)
+if exist "%DRIVE%\" (
+    echo Drive %DRIVE% already exists, attempting to unmount first...
+    "%RCLONE_PATH%" umount %DRIVE% 2>nul
+    timeout /t 2 /nobreak >nul
+)
+
+REM -- Mount command
+echo Mounting %REMOTE%:%BUCKET% to %DRIVE%...
+"%RCLONE_PATH%" mount %REMOTE%:%BUCKET% %DRIVE% --vfs-cache-mode full --network-mode
+
+
+
+
+
+##########   mountscript.vbs   ############
+
+' ===== mountscript.vbs =====
+' Improved version with error handling and logging
+
+Set WshShell = CreateObject("WScript.Shell")
+Set fso = CreateObject("Scripting.FileSystemObject")
+
+' Define paths
+Dim batPath
+batPath = "C:\rclone\s3mount.bat"
+
+' Check if batch file exists
+If fso.FileExists(batPath) Then
+    ' Run the batch file hidden, without waiting
+    WshShell.Run """" & batPath & """", 0, False
+    
+    ' Optional: Log success (uncomment if needed)
+    ' WshShell.Run "echo " & Now & " - Mount script executed >> C:\temp\mount.log", 0, False
+Else
+    ' Optional: Log error (uncomment if needed)
+    ' WshShell.Run "echo " & Now & " - Batch file not found: " & batPath & " >> C:\temp\mount.log", 0, False
+End If
