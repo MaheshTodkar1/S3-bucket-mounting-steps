@@ -1,0 +1,52 @@
+This is a deeper Windows permissions and service context issue. Even with file permissions set correctly, there are several Windows-specific factors preventing the mount from working for user Mahesh. Here's a comprehensive solution:Root Cause AnalysisThe issue isn't just file permissions - it's about:User session isolation in WindowsWinFsp driver access across user sessionsService/process elevation requirementsProper Solution
+
+ StepsStep 1: Verify WinFsp Installation# Run as Administrator
+winfsp-x64.msi /quiet INSTALLDIR="C:\Program Files (x86)\WinFsp"Ensure WinFsp is installed system-wide, not just for Administrator.
+
+Step 2: Create a System Service ApproachCreate a new batch file system-s3mount.bat:@echo off
+# Kill any existing rclone processes
+taskkill /f /im rclone.exe 2>nul
+
+# Wait a moment
+timeout /t 3 /nobreak >nul
+
+# Mount with system-wide visibility
+rclone mount s3:yourbucket S: ^
+  --config="C:\rclone\rclone.conf" ^
+  --vfs-cache-mode writes ^
+  --vfs-cache-max-size 100M ^
+  --allow-other ^
+  --file-perms 0777 ^
+  --dir-perms 0777 ^
+  --network-mode ^
+  --daemonStep 
+
+
+3: Modify Task Scheduler ConfigurationDelete existing task and recreate with these settings:General Tab:Name: S3Mount-SystemWideUse account: SYSTEMRun whether user is logged on or not: ✓Run with highest privileges: ✓Triggers Tab:At startup (not at logon)Actions Tab:Program: C:\rclone\system-s3mount.batStep 
+
+
+4: Alternative - User-Specific MountIf system-wide doesn't work, create user-specific setup:Log in as MaheshCreate scheduled task while logged in as Mahesh:schtasks /create /tn "S3Mount-Mahesh" /tr "C:\rclone\s3mount.bat" /sc onlogon /ru "Mahesh" /rp "MaheshPassword"Step 
+
+
+5: Registry Permissions FixRun as Administrator:# Give Mahesh access to WinFsp registry keys
+icacls "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WinFsp.Launcher" /grant Mahesh:F
+
+
+Step 6: Folder Permissions Fix# Set proper permissions on rclone folder
+icacls "C:\rclone" /grant Mahesh:(OI)(CI)F /T
+icacls "C:\rclone" /grant Users:(OI)(CI)RX /T
+
+
+Step 7: Test MethodCreate test-mount.bat for Mahesh:@echo off
+echo Testing mount as %USERNAME%
+rclone version
+rclone listremotes
+rclone mount s3:yourbucket S: --config="C:\rclone\rclone.conf" --vfs-cache-mode writes --allow-other --network-mode
+pauseAlternative Solution: Use Shared Network DriveIf the above doesn't work, use this approach:Mount on one machine as AdministratorShare the mounted drive over network:net share S3Drive=S: /grant:Mahesh,FULLMap network drive on Mahesh's session:net use Z: \\localhost\S3Drive /persistent:yesDebugging StepsRun these as Mahesh to diagnose:# Check if WinFsp is accessible
+fsutil fsinfo drives
+
+# Check rclone config access
+rclone config show
+
+# Check mount permissions
+mountvolTry the Step 3 system-wide approach first - this usually resolves the user isolation issue. If that doesn't work, use the user-specific approach in Step 4.Which step would you like to start with?
